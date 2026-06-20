@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import JSZip from "jszip";
 
 export default function Home() {
 const [prompt, setPrompt] = useState("");
@@ -40,17 +41,7 @@ try {
   const data = await response.json();
 
   if (data.success) {
-
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: "assistant",
-        content: "Addon generated successfully.",
-      },
-    ]);
-
     try {
-
       const parsed = JSON.parse(data.response);
 
       if (parsed.files) {
@@ -59,10 +50,16 @@ try {
         if (parsed.files.length > 0) {
           setSelectedFile(parsed.files[0]);
         }
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: `Generated ${parsed.files.length} files.`,
+          },
+        ]);
       }
-
-    } catch (err) {
-
+    } catch {
       setMessages((prev) => [
         ...prev,
         {
@@ -70,11 +67,8 @@ try {
           content: data.response,
         },
       ]);
-
     }
-
   } else {
-
     setMessages((prev) => [
       ...prev,
       {
@@ -82,11 +76,8 @@ try {
         content: "Error: " + data.error,
       },
     ]);
-
   }
-
 } catch (error) {
-
   setMessages((prev) => [
     ...prev,
     {
@@ -94,28 +85,72 @@ try {
       content: "Failed: " + error.message,
     },
   ]);
-
 }
 
 setLoading(false);
 
 }
 
+async function downloadAddon() {
+if (files.length === 0) {
+alert("Generate an addon first");
+return;
+}
+
+const zip = new JSZip();
+
+files.forEach((file) => {
+  zip.file(file.path, file.content);
+});
+
+const blob = await zip.generateAsync({
+  type: "blob",
+});
+
+const url = URL.createObjectURL(blob);
+
+const a = document.createElement("a");
+
+a.href = url;
+a.download = "GeneratedAddon.mcaddon";
+
+document.body.appendChild(a);
+a.click();
+document.body.removeChild(a);
+
+URL.revokeObjectURL(url);
+
+}
+
 return (
 <main className="h-screen bg-zinc-950 text-white flex flex-col">
 
+  {/* Header */}
   <div className="border-b border-zinc-800 p-4">
-    <h1 className="text-2xl font-bold">
-      Minecraft Addon Studio
-    </h1>
+    <div className="flex justify-between items-center">
+
+      <h1 className="text-2xl font-bold">
+        Minecraft Addon Studio
+      </h1>
+
+      <button
+        onClick={downloadAddon}
+        className="bg-blue-600 px-4 py-2 rounded"
+      >
+        Download Addon
+      </button>
+
+    </div>
   </div>
 
+  {/* Main Layout */}
   <div className="flex flex-1 overflow-hidden">
 
-    {/* FILE TREE */}
+    {/* File Tree */}
     <div className="w-72 border-r border-zinc-800 overflow-y-auto">
 
       <div className="p-4">
+
         <h2 className="font-bold mb-4">
           Project Files
         </h2>
@@ -142,11 +177,12 @@ return (
             </div>
           ))
         )}
+
       </div>
 
     </div>
 
-    {/* CHAT */}
+    {/* Chat Panel */}
     <div className="flex-1 flex flex-col border-r border-zinc-800">
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -200,8 +236,8 @@ return (
 
     </div>
 
-    {/* FILE VIEWER */}
-    <div className="w-96 overflow-y-auto">
+    {/* File Viewer */}
+    <div className="w-80 overflow-y-auto">
 
       <div className="p-4">
 
